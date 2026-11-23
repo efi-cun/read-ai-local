@@ -32,13 +32,21 @@
         </div>
     </div>
 
-    <!-- Reproductor de Audio Sincronizado si existe archivo -->
+    <!-- Reproductor Multimedia (Video o Audio) Sincronizado -->
     {% if meeting.audio_path %}
-    <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-            <i data-lucide="volume-2" class="w-5 h-5"></i>
+    <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-col items-center gap-4">
+        {% if meeting.audio_path.endswith('.webm') or meeting.audio_path.endswith('.mp4') or meeting.audio_path.endswith('.mkv') %}
+        <div class="w-full flex justify-center bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-800">
+            <video id="meetingMedia" src="{{ meeting.audio_path }}" controls class="w-full max-h-[460px] rounded-xl"></video>
         </div>
-        <audio id="meetingAudio" src="{{ meeting.audio_path }}" controls class="w-full h-9 rounded-lg"></audio>
+        {% else %}
+        <div class="w-full flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                <i data-lucide="volume-2" class="w-5 h-5"></i>
+            </div>
+            <audio id="meetingMedia" src="{{ meeting.audio_path }}" controls class="w-full h-9 rounded-lg"></audio>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -166,10 +174,10 @@
 {% block scripts %}
 <script>
     function jumpToTime(seconds) {
-        const audio = document.getElementById("meetingAudio");
-        if (audio) {
-            audio.currentTime = seconds;
-            audio.play();
+        const media = document.getElementById("meetingMedia") || document.getElementById("meetingAudio");
+        if (media) {
+            media.currentTime = seconds;
+            media.play();
         }
     }
 

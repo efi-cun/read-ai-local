@@ -180,19 +180,33 @@ async def api_upload_media(
     meet_code: str = Form(""),
     file: UploadFile = File(...)
 ):
-    m_id = str(uuid.uuid4())[:8]
-    create_meeting(m_id, title, meet_code)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    m_id = None
     
+    # Si viene meet_code, asociar a la reunión existente que tomó la asistencia
+    if meet_code:
+        cur.execute("SELECT id FROM meetings WHERE meet_code = ? ORDER BY created_at DESC LIMIT 1", (meet_code,))
+        row = cur.fetchone()
+        if row:
+            m_id = row["id"]
+            
+    if not m_id:
+        m_id = str(uuid.uuid4())[:8]
+        create_meeting(m_id, title, meet_code)
+    else:
+        with conn:
+            conn.execute("UPDATE meetings SET title = ? WHERE id = ?", (title, m_id))
+            
     saved_path = UPLOADS_DIR / f"{m_id}_{file.filename}"
     with open(saved_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    conn = get_db_connection()
     with conn:
         conn.execute("UPDATE meetings SET audio_path = ? WHERE id = ?", (f"/uploads/{saved_path.name}", m_id))
     conn.close()
     
-    # Transcribir y generar analíticas
+    # Transcribir con faster-whisper y generar analíticas
     transcripts = transcribe_audio_file(m_id, saved_path)
     extract_action_items(m_id, transcripts)
     

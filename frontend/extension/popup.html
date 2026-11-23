@@ -2,23 +2,44 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ReadAI Local</title>
+    <title>ReadAI Local Assistant</title>
     <style>
-        body { width: 260px; font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #0F172A; color: #F8FAFC; }
-        .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #22C55E; }
-        .title { font-weight: bold; font-size: 14px; }
-        p { font-size: 12px; color: #94A3B8; margin: 6px 0; }
-        .btn { display: block; width: 100%; text-align: center; background: #3B82F6; color: white; padding: 8px 0; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; margin-top: 12px; }
-        .btn:hover { background: #2563EB; }
+        body { width: 280px; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background: #0F172A; color: #F8FAFC; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; background: rgba(34, 197, 94, 0.15); color: #4ADE80; padding: 4px 8px; border-radius: 9999px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; }
+        .title { font-weight: bold; font-size: 14px; color: white; }
+        .card { background: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 12px; margin: 10px 0; font-size: 12px; }
+        .card-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .label { color: #94A3B8; }
+        .val { font-weight: 600; color: #F1F5F9; }
+        .btn { display: block; width: 100%; text-align: center; background: #6366F1; color: white; padding: 9px 0; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; margin-top: 12px; box-sizing: border-box; }
+        .btn:hover { background: #4F46E5; }
     </style>
 </head>
 <body>
     <div class="header">
-        <span class="status-dot"></span>
-        <span class="title">ReadAI Local Activo</span>
+        <span class="title">ReadAI Local</span>
+        <div class="badge">
+            <span class="dot"></span>
+            <span>Activo</span>
+        </div>
     </div>
-    <p>Detectando automáticamente participantes y horas de ingreso en esta reunión.</p>
-    <a href="http://localhost:8000/attendance" target="_blank" class="btn">Abrir Panel de Asistencia</a>
+    <div class="card">
+        <div class="card-row">
+            <span class="label">Grabación de Video:</span>
+            <span class="val" style="color:#EF4444;">Automática 🔴</span>
+        </div>
+        <div class="card-row">
+            <span class="label">Toma de Asistencia:</span>
+            <span class="val" style="color:#22C55E;">En Tiempo Real 🟢</span>
+        </div>
+        <div class="card-row">
+            <span class="label">Transcripción:</span>
+            <span class="val">faster-whisper</span>
+        </div>
+    </div>
+    <p style="font-size:11px; color:#94A3B8; margin:6px 0;">La extensión inicia y detiene la grabación de video/audio automáticamente al entrar y salir de la llamada.</p>
+    <a href="http://localhost:8000/attendance" target="_blank" class="btn">Abrir Panel de Control</a>
 </body>
 </html>
