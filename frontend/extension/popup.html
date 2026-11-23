@@ -6,23 +6,30 @@
     <style>
         body { width: 280px; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background: #0F172A; color: #F8FAFC; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; background: rgba(34, 197, 94, 0.15); color: #4ADE80; padding: 4px 8px; border-radius: 9999px; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; }
+        .badge { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 9999px; }
+        .badge-online { background: rgba(34, 197, 94, 0.15); color: #4ADE80; }
+        .badge-offline { background: rgba(239, 68, 68, 0.15); color: #F87171; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot-online { background: #22C55E; box-shadow: 0 0 8px #22C55E; }
+        .dot-offline { background: #EF4444; }
         .title { font-weight: bold; font-size: 14px; color: white; }
         .card { background: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 12px; margin: 10px 0; font-size: 12px; }
         .card-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
         .label { color: #94A3B8; }
         .val { font-weight: 600; color: #F1F5F9; }
-        .btn { display: block; width: 100%; text-align: center; background: #6366F1; color: white; padding: 9px 0; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; margin-top: 12px; box-sizing: border-box; }
-        .btn:hover { background: #4F46E5; }
+        .btn { display: block; width: 100%; text-align: center; color: white; padding: 9px 0; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; margin-top: 10px; box-sizing: border-box; cursor: pointer; border: none; }
+        .btn-panel { background: #6366F1; }
+        .btn-panel:hover { background: #4F46E5; }
+        .btn-launch { background: #10B981; }
+        .btn-launch:hover { background: #059669; }
     </style>
 </head>
 <body>
     <div class="header">
         <span class="title">ReadAI Local</span>
-        <div class="badge">
-            <span class="dot"></span>
-            <span>Activo</span>
+        <div id="statusBadge" class="badge badge-online">
+            <span id="statusDot" class="dot dot-online"></span>
+            <span id="statusText">Verificando...</span>
         </div>
     </div>
     <div class="card">
@@ -35,11 +42,25 @@
             <span class="val" style="color:#22C55E;">En Tiempo Real 🟢</span>
         </div>
         <div class="card-row">
-            <span class="label">Transcripción:</span>
+            <span class="label">Motor de Transcripción:</span>
             <span class="val">faster-whisper</span>
         </div>
     </div>
-    <p style="font-size:11px; color:#94A3B8; margin:6px 0;">La extensión inicia y detiene la grabación de video/audio automáticamente al entrar y salir de la llamada.</p>
-    <a href="http://localhost:8000/attendance" target="_blank" class="btn">Abrir Panel de Control</a>
+    
+    <div id="offlineAlert" style="display:none; padding:8px 10px; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); border-radius:8px; font-size:11px; color:#FCA5A5; margin-bottom:8px;">
+        ⚠️ El servidor local está apagado. Puedes iniciarlo directamente con el botón de abajo.
+    </div>
+
+    <!-- Botón para iniciar el servidor si está apagado -->
+    <a id="btnLaunchBat" href="readai://start" class="btn btn-launch" style="display:none;">
+        ⚡ Iniciar Servidor Local (.bat)
+    </a>
+
+    <!-- Botón para abrir el panel si está encendido -->
+    <a id="btnOpenPanel" href="http://localhost:8000/attendance" target="_blank" class="btn btn-panel">
+        Abrir Panel de Control
+    </a>
+
+    <script src="popup.js"></script>
 </body>
 </html>
