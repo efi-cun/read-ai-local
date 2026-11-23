@@ -22,6 +22,7 @@ from .attendance import record_participant_event, export_attendance_excel, load_
 from .analytics import calculate_talk_metrics, extract_action_items
 from .transcriber import transcribe_audio_file
 from .rag_engine import ask_read_agent
+from .calendar_sync import get_calendar_url, save_calendar_url, fetch_calendar_events, find_calendar_event_for_meet
 
 # Inicializar Base de Datos
 init_db()
@@ -75,7 +76,13 @@ class RosterLoadRequest(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def view_dashboard(request: Request):
     meetings = list_meetings()
-    return templates.TemplateResponse(request=request, name="index.html", context={"meetings": meetings})
+    cal_url = get_calendar_url()
+    cal_events = fetch_calendar_events()
+    return templates.TemplateResponse(request=request, name="index.html", context={
+        "meetings": meetings,
+        "calendar_url": cal_url,
+        "calendar_events": cal_events
+    })
 
 @app.get("/meetings/{meeting_id}", response_class=HTMLResponse)
 async def view_meeting_detail(request: Request, meeting_id: str):
@@ -134,12 +141,48 @@ async def api_meet_event(payload: MeetEventRequest):
     """
     m_id = payload.meeting_id
     if not m_id:
-        meetings = list_meetings()
-        if meetings and meetings[0]["status"] == "live":
-            m_id = meetings[0]["id"]
-        else:
+        # Buscar si existe una sesión activa para este mismo código creada en los últimos 60 minutos
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, created_at, meet_code FROM meetings 
+            WHERE meet_code = ? AND status = 'live'
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            (payload.meet_code,)
+        )
+        row = cur.fetchone()
+        conn.close()
+
+        reuse_existing = False
+        if row and row["created_at"]:
+            try:
+                created_dt = datetime.fromisoformat(row["created_at"])
+                # Si se creó hace menos de 60 minutos, es la misma llamada en curso
+                if (datetime.now() - created_dt).total_seconds() < 3600:
+                    m_id = row["id"]
+                    reuse_existing = True
+            except Exception:
+                pass
+
+        if not reuse_existing:
+            # Crear nueva sesión independiente para este día y hora
             m_id = str(uuid.uuid4())[:8]
-            create_meeting(m_id, f"Google Meet: {payload.meet_code}", payload.meet_code)
+            fecha_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
+            session_title = f"Sesión Meet: {payload.meet_code} ({fecha_hora})"
+            
+            # Buscar si existe en el calendario de Google / Outlook
+            cal_event = find_calendar_event_for_meet(payload.meet_code)
+            if cal_event:
+                session_title = f"{cal_event['title']} ({fecha_hora})"
+                
+            create_meeting(m_id, session_title, payload.meet_code)
+            
+            # Si el calendario tenía lista de invitados, precargarlos como lista esperada
+            if cal_event and cal_event.get("attendees"):
+                attendee_names = [a["name"] for a in cal_event["attendees"]]
+                load_roster_into_meeting(m_id, attendee_names)
             
     res = record_participant_event(
         meeting_id=m_id,
@@ -164,6 +207,21 @@ async def api_load_roster(payload: RosterLoadRequest):
     load_roster_into_meeting(payload.meeting_id, payload.names)
     await manager.broadcast({"type": "ROSTER_UPDATED", "meeting_id": payload.meeting_id})
     return {"status": "success", "count": len(payload.names)}
+
+class CalendarConfigRequest(BaseModel):
+    url: str
+
+@app.get("/api/calendar/events")
+async def api_get_calendar_events():
+    url = get_calendar_url()
+    events = fetch_calendar_events()
+    return {"configured": bool(url), "events": events}
+
+@app.post("/api/calendar/config")
+async def api_config_calendar(payload: CalendarConfigRequest):
+    save_calendar_url(payload.url)
+    events = fetch_calendar_events()
+    return {"status": "success", "count": len(events)}
 
 @app.get("/api/attendance/export/{meeting_id}")
 async def api_export_attendance(meeting_id: str):
