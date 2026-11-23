@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ReadAI Local</title>
+    <style>
+        body { width: 260px; font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #0F172A; color: #F8FAFC; }
+        .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #22C55E; }
+        .title { font-weight: bold; font-size: 14px; }
+        p { font-size: 12px; color: #94A3B8; margin: 6px 0; }
+        .btn { display: block; width: 100%; text-align: center; background: #3B82F6; color: white; padding: 8px 0; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; margin-top: 12px; }
+        .btn:hover { background: #2563EB; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="status-dot"></span>
+        <span class="title">ReadAI Local Activo</span>
+    </div>
+    <p>Detectando automáticamente participantes y horas de ingreso en esta reunión.</p>
+    <a href="http://localhost:8000/attendance" target="_blank" class="btn">Abrir Panel de Asistencia</a>
+</body>
+</html>

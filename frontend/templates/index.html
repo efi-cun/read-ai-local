@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ReadAI Local{% endblock %}
+{% block header_title %}Resumen General de Reuniones{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Métricas Top Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Total Reuniones</p>
+                <h3 class="text-2xl font-bold text-white mt-1">{{ meetings | length }}</h3>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <i data-lucide="video" class="w-6 h-6"></i>
+            </div>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Asistencia Meet Activa</p>
+                <h3 class="text-2xl font-bold text-emerald-400 mt-1">En Vivo</h3>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <i data-lucide="radio" class="w-6 h-6 animate-pulse"></i>
+            </div>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Modelo Whisper Local</p>
+                <h3 class="text-2xl font-bold text-white mt-1">faster-whisper</h3>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                <i data-lucide="cpu" class="w-6 h-6"></i>
+            </div>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Privacidad y Costo</p>
+                <h3 class="text-2xl font-bold text-purple-400 mt-1">100% Local / $0</h3>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guía Rápida Google Meet Extension -->
+    <div class="p-6 rounded-2xl bg-gradient-to-r from-indigo-950/40 to-slate-950 border border-indigo-500/20 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-1">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="chrome" class="w-5 h-5 text-indigo-400"></i>
+                Conectar con Google Meet en 1 Clic
+            </h3>
+            <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                Para tomar asistencia automáticamente en Google Meet: abre <code class="text-indigo-300 bg-slate-800 px-1 py-0.5 rounded">chrome://extensions</code> o <code class="text-indigo-300 bg-slate-800 px-1 py-0.5 rounded">edge://extensions</code>, activa el <b>Modo Desarrollador</b> y carga la carpeta <code class="text-indigo-300 bg-slate-800 px-1 py-0.5 rounded">read_ai_local/frontend/extension</code>. ¡Detectará a todos los que entren de inmediato!
+            </p>
+        </div>
+        <a href="/attendance" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shrink-0 flex items-center gap-2">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            Ver Panel de Asistencia
+        </a>
+    </div>
+
+    <!-- Lista de Reuniones Recientes -->
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white">Reuniones Registradas</h3>
+        </div>
+
+        {% if meetings %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for m in meetings %}
+            <div class="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between space-y-4 shadow-lg">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full {% if m.status == 'live' %}bg-emerald-500/20 text-emerald-400 border border-emerald-500/30{% else %}bg-slate-800 text-slate-300{% endif %}">
+                            {{ m.status | upper }}
+                        </span>
+                        <span class="text-xs text-slate-500">{{ m.created_at }}</span>
+                    </div>
+                    <h4 class="font-bold text-white text-base hover:text-indigo-400 transition">
+                        <a href="/meetings/{{ m.id }}">{{ m.title }}</a>
+                    </h4>
+                    {% if m.meet_code %}
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="link" class="w-3.5 h-3.5 text-slate-500"></i>
+                        Meet: <span class="font-mono text-indigo-300">{{ m.meet_code }}</span>
+                    </p>
+                    {% endif %}
+                </div>
+
+                <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <a href="/meetings/{{ m.id }}" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+                        Ver Analíticas & Transcripción
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </a>
+                    <a href="/api/attendance/export/{{ m.id }}" class="text-slate-400 hover:text-white" title="Descargar Asistencia Excel">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-12 text-center border border-dashed border-slate-800 rounded-2xl space-y-3">
+            <i data-lucide="inbox" class="w-10 h-10 text-slate-600 mx-auto"></i>
+            <h4 class="text-base font-bold text-slate-300">No hay reuniones todavía</h4>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">Sube una grabación o conéctate a una llamada de Google Meet con la extensión para ver transcripciones y analíticas aquí.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

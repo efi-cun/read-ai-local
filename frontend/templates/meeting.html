@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}{{ meeting.title }} - Analíticas y Transcripción{% endblock %}
+{% block header_title %}{{ meeting.title }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header de Reunión y Acciones -->
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-slate-950/70 border border-slate-800 rounded-2xl">
+        <div class="space-y-1">
+            <div class="flex items-center gap-3">
+                <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    {{ meeting.status | upper }}
+                </span>
+                <span class="text-xs text-slate-400">{{ meeting.created_at }}</span>
+                {% if meeting.meet_code %}
+                <span class="text-xs font-mono text-indigo-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Meet: {{ meeting.meet_code }}</span>
+                {% endif %}
+            </div>
+            <h2 class="text-xl font-bold text-white">{{ meeting.title }}</h2>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <a href="/api/attendance/export/{{ meeting.id }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                Descargar Asistencia (.xlsx)
+            </a>
+            <a href="/analytics/ask?meeting_id={{ meeting.id }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                Consultar con Ask Read
+            </a>
+        </div>
+    </div>
+
+    <!-- Reproductor de Audio Sincronizado si existe archivo -->
+    {% if meeting.audio_path %}
+    <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center gap-4">
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+            <i data-lucide="volume-2" class="w-5 h-5"></i>
+        </div>
+        <audio id="meetingAudio" src="{{ meeting.audio_path }}" controls class="w-full h-9 rounded-lg"></audio>
+    </div>
+    {% endif %}
+
+    <!-- Grid: Transcripción (Izquierda) y Analíticas (Derecha) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Columna Izquierda: Transcripción Sincronizada y Action Items -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Action Items / Compromisos -->
+            {% if actions %}
+            <div class="p-5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="check-square" class="w-4 h-4 text-emerald-400"></i>
+                    Compromisos y Tareas Clave (Action Items)
+                </h3>
+                <div class="space-y-2">
+                    {% for a in actions %}
+                    <div class="p-3 bg-slate-900/80 border border-slate-800/80 rounded-xl flex items-start justify-between gap-3 text-xs">
+                        <div class="flex items-start gap-2.5">
+                            <input type="checkbox" class="mt-0.5 rounded border-slate-700 text-indigo-600 focus:ring-0">
+                            <span class="text-slate-200">{{ a.task }}</span>
+                        </div>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 bg-slate-800 text-slate-400 rounded shrink-0">
+                            {{ a.assignee }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Transcripción Sincronizada -->
+            <div class="p-6 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="align-left" class="w-4 h-4 text-indigo-400"></i>
+                        Transcripción Inteligente por Hablante
+                    </h3>
+                    <span class="text-xs text-slate-400">{{ transcripts | length }} intervenciones</span>
+                </div>
+
+                <div class="space-y-4 max-h-[600px] overflow-y-auto pr-2" id="transcriptContainer">
+                    {% for t in transcripts %}
+                    <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/60 hover:border-indigo-500/40 transition space-y-1.5" data-start="{{ t.start_time }}">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-indigo-300">{{ t.speaker }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] px-1.5 py-0.5 rounded font-mono 
+                                    {% if t.sentiment == 'positive' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                    {% elif t.sentiment == 'negative' %}bg-red-500/10 text-red-400 border border-red-500/20
+                                    {% else %}bg-slate-800 text-slate-400{% endif %}">
+                                    {{ t.sentiment }}
+                                </span>
+                                <button onclick="jumpToTime({{ t.start_time }})" class="font-mono text-indigo-400 hover:text-indigo-300 text-[11px] bg-slate-800 px-1.5 py-0.5 rounded cursor-pointer">
+                                    ▶ {{ "%02d:%02d" | format((t.start_time // 60) | int, (t.start_time % 60) | int) }}
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">{{ t.text }}</p>
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-slate-500 py-8 text-center">No hay transcripción disponible aún.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Analíticas de Habla y Asistencia -->
+        <div class="space-y-6">
+            <!-- Gráfico de % de Habla (Talk-Time) -->
+            <div class="p-6 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-4">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i>
+                    Distribución de Habla (% Talk-Time)
+                </h3>
+                <div class="h-56 relative flex items-center justify-center">
+                    <canvas id="talkChart"></canvas>
+                </div>
+                <div class="space-y-2 pt-2 border-t border-slate-800/80 text-xs">
+                    {% for spk in metrics.speakers %}
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300 font-medium">{{ spk.speaker }}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="text-slate-400">{{ spk.wpm }} WPM</span>
+                            <span class="font-bold text-indigo-400">{{ spk.percentage }}%</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Asistencia Registrada en la Sesión -->
+            <div class="p-6 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i>
+                        Asistencia Registrada
+                    </h3>
+                    <span class="text-xs font-semibold text-emerald-400">{{ participants | length }} personas</span>
+                </div>
+
+                <div class="space-y-2 max-h-72 overflow-y-auto">
+                    {% for p in participants %}
+                    <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between text-xs">
+                        <div>
+                            <p class="font-semibold text-slate-200">{{ p.name }}</p>
+                            <p class="text-[11px] text-slate-500">Ingreso: {{ p.entry_time or 'No registrado' }}</p>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold
+                            {% if p.status == 'Presente' %}bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
+                            {% elif p.status == 'Tardanza' %}bg-amber-500/20 text-amber-400 border border-amber-500/30
+                            {% else %}bg-rose-500/20 text-rose-400 border border-rose-500/30{% endif %}">
+                            {{ p.status }}
+                        </span>
+                    </div>
+                    {% else %}
+                    <p class="text-xs text-slate-500 text-center py-4">No hay asistentes registrados aún.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function jumpToTime(seconds) {
+        const audio = document.getElementById("meetingAudio");
+        if (audio) {
+            audio.currentTime = seconds;
+            audio.play();
+        }
+    }
+
+    // Inicializar Gráfico de Habla con Chart.js
+    const speakersData = {{ metrics.speakers | tojson }};
+    if (speakersData && speakersData.length > 0) {
+        const ctx = document.getElementById('talkChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: speakersData.map(s => s.speaker),
+                datasets: [{
+                    data: speakersData.map(s => s.percentage),
+                    backgroundColor: ['#6366F1', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                cutout: '72%'
+            }
+        });
+    }
+</script>
+{% endblock %}

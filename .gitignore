@@ -1,0 +1,24 @@
+# Python y Entornos
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+env/
+
+# Datos dinámicos locales (para no subir archivos pesados)
+data/uploads/*
+!data/uploads/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
+data/rosters/*
+!data/rosters/.gitkeep
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+.vscode/
+.idea/

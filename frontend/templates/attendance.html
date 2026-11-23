@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Control de Asistencia en Tiempo Real - ReadAI Local{% endblock %}
+{% block header_title %}Control de Asistencia Automatizado (Google Meet){% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Barra de Selección y Acciones -->
+    <div class="p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Seleccionar Reunión / Sesión:</label>
+                <select id="meetingSelect" onchange="window.location.href='/attendance?meeting_id=' + this.value" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 font-medium">
+                    {% for m in meetings %}
+                    <option value="{{ m.id }}" {% if m.id == selected_id %}selected{% endif %}>
+                        {{ m.title }} ({% if m.meet_code %}Meet: {{ m.meet_code }} - {% endif %}{{ m.created_at[:10] }})
+                    </option>
+                    {% else %}
+                    <option value="">No hay reuniones registradas</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if selected_meeting %}
+            <div class="hidden md:block pt-5">
+                <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Sincronización en Vivo Activa
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="document.getElementById('rosterModal').classList.remove('hidden')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 border border-slate-700 transition">
+                <i data-lucide="list-plus" class="w-4 h-4 text-indigo-400"></i>
+                Cargar Lista Oficial (Roster)
+            </button>
+
+            {% if selected_id %}
+            <a href="/api/attendance/export/{{ selected_id }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                Descargar Asistencia (.xlsx)
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Estadísticas Rápidas de Asistencia -->
+    {% set presentes = participants | selectattr('status', 'equalto', 'Presente') | list %}
+    {% set tardanzas = participants | selectattr('status', 'equalto', 'Tardanza') | list %}
+    {% set ausentes = participants | selectattr('status', 'equalto', 'Ausente') | list %}
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Total Convocados</p>
+                <h4 class="text-xl font-bold text-white mt-0.5">{{ participants | length }}</h4>
+            </div>
+            <i data-lucide="users" class="w-6 h-6 text-slate-400"></i>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Presentes (Puntuales)</p>
+                <h4 class="text-xl font-bold text-emerald-400 mt-0.5">{{ presentes | length }}</h4>
+            </div>
+            <i data-lucide="check-circle" class="w-6 h-6 text-emerald-400"></i>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Tardanzas</p>
+                <h4 class="text-xl font-bold text-amber-400 mt-0.5">{{ tardanzas | length }}</h4>
+            </div>
+            <i data-lucide="clock" class="w-6 h-6 text-amber-400"></i>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400">Ausentes</p>
+                <h4 class="text-xl font-bold text-rose-400 mt-0.5">{{ ausentes | length }}</h4>
+            </div>
+            <i data-lucide="x-circle" class="w-6 h-6 text-rose-400"></i>
+        </div>
+    </div>
+
+    <!-- Tabla Oficial de Asistencia en Tiempo Real -->
+    <div class="p-6 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="clipboard-list" class="w-5 h-5 text-indigo-400"></i>
+                Registro Oficial de Asistentes
+            </h3>
+            <span class="text-xs text-slate-400">Sincronización en tiempo real vía WebSocket</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
+                        <th class="py-3 px-4">#</th>
+                        <th class="py-3 px-4">Nombre y Apellidos</th>
+                        <th class="py-3 px-4">Hora de Ingreso</th>
+                        <th class="py-3 px-4">Hora de Salida</th>
+                        <th class="py-3 px-4 text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60" id="attendanceTableBody">
+                    {% for p in participants %}
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="py-3 px-4 text-slate-500 font-mono">{{ loop.index }}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-200">{{ p.name }}</td>
+                        <td class="py-3 px-4 font-mono text-slate-300">{{ p.entry_time or '--:--:--' }}</td>
+                        <td class="py-3 px-4 font-mono text-slate-400">{{ p.exit_time or '--:--:--' }}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold
+                                {% if p.status == 'Presente' %}bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
+                                {% elif p.status == 'Tardanza' %}bg-amber-500/20 text-amber-400 border border-amber-500/30
+                                {% else %}bg-rose-500/20 text-rose-400 border border-rose-500/30{% endif %}">
+                                {{ p.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-500">
+                            No hay registros de asistencia para esta reunión todavía. Conéctate a Google Meet con la extensión para registrar en vivo.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cargar Lista Oficial (Roster) -->
+<div id="rosterModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+        <div class="flex justify-between items-center">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i>
+                Cargar Lista de Participantes / Estudiantes
+            </h3>
+            <button onclick="document.getElementById('rosterModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        <p class="text-xs text-slate-400">Pega los nombres de los estudiantes o asistentes esperados (uno por línea). El sistema los pondrá como "Ausentes" hasta que entren a la llamada.</p>
+        <textarea id="rosterNamesInput" rows="7" placeholder="Carlos Gómez&#10;María Rodríguez&#10;Juan Pérez&#10;Andrea Sánchez" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"></textarea>
+        <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="document.getElementById('rosterModal').classList.add('hidden')" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white">Cancelar</button>
+            <button type="button" onclick="submitRoster()" class="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition">Guardar Lista</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const meetingId = "{{ selected_id }}";
+
+    // WebSocket en tiempo real
+    if (meetingId) {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${protocol}//${window.location.host}/ws/attendance/${meetingId}`;
+        const socket = new WebSocket(wsUrl);
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === "ATTENDANCE_UPDATE" || data.type === "ROSTER_UPDATED") {
+                // Recargar para mostrar los nuevos presentes sin intervención manual
+                setTimeout(() => window.location.reload(), 800);
+            }
+        };
+    }
+
+    async function submitRoster() {
+        const text = document.getElementById("rosterNamesInput").value;
+        const names = text.split("\n").map(n => n.trim()).filter(n => n.length > 0);
+        if (names.length === 0) {
+            alert("Por favor ingresa al menos un nombre.");
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/attendance/roster", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    meeting_id: meetingId,
+                    names: names
+                })
+            });
+            if (res.ok) {
+                window.location.reload();
+            }
+        } catch (e) {
+            alert("Error al cargar la lista: " + e);
+        }
+    }
+</script>
+{% endblock %}

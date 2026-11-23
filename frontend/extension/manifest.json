@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "ReadAI Local - Meet Assistant",
+  "version": "1.0.0",
+  "description": "Captura en tiempo real la asistencia y participantes en Google Meet y los sincroniza con tu servidor local.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ReadAI Local Assistant"
+  }
+}

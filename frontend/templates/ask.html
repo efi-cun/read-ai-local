@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Ask Read - Asistente Inteligente de Reuniones{% endblock %}
+{% block header_title %}Ask Read (Buscador Conversacional RAG){% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Intro Card -->
+    <div class="p-6 bg-gradient-to-r from-indigo-950/40 via-slate-950 to-slate-950 border border-indigo-500/20 rounded-2xl space-y-2">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
+            Pregúntale a tus Reuniones
+        </h2>
+        <p class="text-xs text-slate-300 leading-relaxed">
+            Consulta cualquier detalle sobre la asistencia, decisiones, tareas acordadas o intervenciones de los participantes en tus reuniones.
+        </p>
+    </div>
+
+    <!-- Barra de Búsqueda / Chat Input -->
+    <div class="p-6 bg-slate-950/80 border border-slate-800 rounded-2xl shadow-xl space-y-4">
+        <div class="flex gap-3">
+            <div class="relative flex-1">
+                <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5"></i>
+                <input type="text" id="askInput" placeholder="Ej: ¿Quiénes faltaron a la reunión? o ¿Qué compromisos quedaron pendientes?" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-medium">
+            </div>
+            <button onclick="sendQuery()" id="askBtn" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition shrink-0">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>Preguntar</span>
+            </button>
+        </div>
+
+        <!-- Sugerencias de Preguntas Rápidas -->
+        <div class="flex flex-wrap gap-2 pt-1 text-[11px]">
+            <span class="text-slate-500 self-center">Prueba con:</span>
+            <button onclick="setQuery('¿Quiénes faltaron a la reunión?')" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition">
+                ¿Quiénes faltaron a la reunión?
+            </button>
+            <button onclick="setQuery('¿A qué hora ingresó cada participante?')" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition">
+                ¿A qué hora ingresó cada participante?
+            </button>
+            <button onclick="setQuery('¿Cuáles son los compromisos y tareas acordadas?')" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition">
+                ¿Cuáles son las tareas acordadas?
+            </button>
+        </div>
+    </div>
+
+    <!-- Indicador de Carga -->
+    <div id="loadingIndicator" class="hidden p-8 text-center space-y-3">
+        <div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="text-xs text-slate-400 font-medium">Analizando transcripciones y registros de asistencia...</p>
+    </div>
+
+    <!-- Resultados / Respuestas -->
+    <div id="resultsContainer" class="space-y-4">
+        <!-- Las respuestas aparecerán aquí dinámicamente -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function setQuery(text) {
+        document.getElementById("askInput").value = text;
+        sendQuery();
+    }
+
+    async function sendQuery() {
+        const input = document.getElementById("askInput");
+        const query = input.value.trim();
+        if (!query) return;
+
+        const loading = document.getElementById("loadingIndicator");
+        const container = document.getElementById("resultsContainer");
+
+        loading.classList.remove("hidden");
+
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const meetingId = urlParams.get("meeting_id");
+
+            const res = await fetch("/api/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    query: query,
+                    meeting_id: meetingId
+                })
+            });
+
+            const data = await res.json();
+            loading.classList.add("hidden");
+
+            // Crear tarjeta de respuesta estilo Read AI
+            const card = document.createElement("div");
+            card.className = "p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4 shadow-xl";
+
+            let sourcesHtml = "";
+            if (data.sources && data.sources.length > 0) {
+                sourcesHtml = `
+                    <div class="pt-3 border-t border-slate-800/80 space-y-2">
+                        <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Citas y Fuentes Verificadas:</p>
+                        <div class="flex flex-wrap gap-2">
+                            ${data.sources.map(s => `
+                                <span class="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-mono flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                    ${s.title}
+                                </span>
+                            `).join("")}
+                        </div>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </div>
+                        <h4 class="font-bold text-white text-xs">Pregunta: "${query}"</h4>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono">Ahora</span>
+                </div>
+                <div class="text-xs text-slate-200 leading-relaxed whitespace-pre-line pl-9">
+                    ${data.answer}
+                </div>
+                ${sourcesHtml}
+            `;
+
+            container.prepend(card);
+            lucide.createIcons();
+        } catch (err) {
+            loading.classList.add("hidden");
+            alert("Error al procesar la consulta: " + err);
+        }
+    }
+
+    // Permitir enviar con Enter
+    document.getElementById("askInput").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            sendQuery();
+        }
+    });
+</script>
+{% endblock %}
